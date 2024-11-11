@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { 
-  Film, 
-  Tv, 
-  Video, 
-  Mic, 
+import {
+  Film,
+  Tv,
+  Video,
+  Mic,
   Plus,
   Search,
   Loader2,
@@ -18,9 +18,15 @@ import {
   Theater,
   Star,
   ArrowLeft,
-  ArrowRight
+  ArrowRight,
 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -31,32 +37,46 @@ import { searchContent } from "@/lib/tmdb";
 import { searchYouTube } from "@/lib/youtube";
 import { toast } from "sonner";
 import Image from "next/image";
+import { useInView } from "react-intersection-observer";
+import { useEffect } from "react";
+
+interface SearchResult {
+  id: string;
+  title: string;
+  // ... add other properties based on what searchYouTube returns
+}
+
+function decodeHTMLEntities(text: string) {
+  const textarea = document.createElement("textarea");
+  textarea.innerHTML = text;
+  return textarea.value;
+}
 
 const contentTypes = [
   {
     id: "movie",
     label: "Movie",
     icon: Film,
-    description: "Feature films and movies"
+    description: "Feature films and movies",
   },
   {
     id: "tv",
     label: "TV Series",
     icon: Tv,
-    description: "TV shows and web series"
+    description: "TV shows and web series",
   },
   {
     id: "documentary",
     label: "Documentary",
     icon: Video,
-    description: "Documentaries and educational content"
+    description: "Documentaries and educational content",
   },
   {
     id: "podcast",
     label: "Podcast",
     icon: Mic,
-    description: "Audio shows and podcasts"
-  }
+    description: "Audio shows and podcasts",
+  },
 ];
 
 const platformConfig = {
@@ -67,14 +87,14 @@ const platformConfig = {
   disney: { name: "Disney+", icon: Clapperboard },
   youtube: { name: "YouTube", icon: Youtube },
   spotify: { name: "Spotify", icon: Music },
-  theaters: { name: "In Theaters", icon: Theater }
+  theaters: { name: "In Theaters", icon: Theater },
 };
 
 const platformsByType = {
   movie: ["netflix", "prime", "apple", "hbo", "disney", "theaters"],
   tv: ["netflix", "prime", "apple", "hbo", "disney"],
   documentary: ["netflix", "prime", "apple", "hbo", "disney", "youtube"],
-  podcast: ["youtube", "spotify"]
+  podcast: ["youtube", "spotify"],
 };
 
 interface AddContentDialogProps {
@@ -84,17 +104,25 @@ interface AddContentDialogProps {
 
 type Step = "search" | "platform";
 
-export default function AddContentDialog({ open, onOpenChange }: AddContentDialogProps) {
+export default function AddContentDialog({
+  open,
+  onOpenChange,
+}: AddContentDialogProps) {
   const [step, setStep] = useState<Step>("search");
   const [searchQuery, setSearchQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [selectedContent, setSelectedContent] = useState<any>(null);
   const [selectedPlatform, setSelectedPlatform] = useState("");
-  const [contentType, setContentType] = useState<"movie" | "tv" | "documentary" | "podcast">("movie");
+  const [contentType, setContentType] = useState<
+    "movie" | "tv" | "documentary" | "podcast"
+  >("movie");
   const { addContent } = useContentStore();
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const { ref: loadMoreRef, inView } = useInView();
 
-  const handleSearch = async () => {
+  const handleSearch = async (resetResults = true) => {
     if (!searchQuery.trim()) {
       toast.error("Please enter a search term");
       return;
@@ -102,29 +130,45 @@ export default function AddContentDialog({ open, onOpenChange }: AddContentDialo
 
     setSearching(true);
     try {
-      let results;
+      let results: SearchResult[];
       if (contentType === "podcast") {
         results = await searchYouTube(searchQuery);
       } else {
         results = await searchContent(searchQuery, contentType);
       }
-      setSearchResults(results);
+
+      if (resetResults) {
+        setSearchResults(results);
+        setPage(1);
+      } else {
+        setSearchResults((prev) => [...prev, ...results]);
+      }
+
+      setHasMore(results.length > 0);
     } catch (error) {
       console.error("Search error:", error);
-      toast.error("Failed to search content");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to search content"
+      );
     } finally {
       setSearching(false);
     }
   };
 
+  useEffect(() => {
+    if (inView && hasMore && !searching && searchQuery) {
+      setPage((prev) => prev + 1);
+      handleSearch(false);
+    }
+  }, [inView, hasMore, searching, searchQuery]);
+
   const handleContentSelect = (content: any) => {
     setSelectedContent(content);
-    // For YouTube content, automatically set platform and add
     if (content.youtubeId) {
       setSelectedPlatform("youtube");
       addContent({
         ...content,
-        platform: "youtube"
+        platform: "youtube",
       });
       toast.success("Added to your library!");
       handleClose();
@@ -141,9 +185,9 @@ export default function AddContentDialog({ open, onOpenChange }: AddContentDialo
 
     addContent({
       ...selectedContent,
-      platform: selectedPlatform
+      platform: selectedPlatform,
     });
-    
+
     toast.success("Added to your library!");
     handleClose();
   };
@@ -154,6 +198,8 @@ export default function AddContentDialog({ open, onOpenChange }: AddContentDialo
     setSearchResults([]);
     setSelectedContent(null);
     setSelectedPlatform("");
+    setPage(1);
+    setHasMore(true);
     onOpenChange(false);
   };
 
@@ -168,6 +214,8 @@ export default function AddContentDialog({ open, onOpenChange }: AddContentDialo
     setSelectedContent(null);
     setSelectedPlatform("");
     setSearchQuery("");
+    setPage(1);
+    setHasMore(true);
   };
 
   return (
@@ -176,10 +224,10 @@ export default function AddContentDialog({ open, onOpenChange }: AddContentDialo
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {step === "platform" && (
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-6 w-6 -ml-2" 
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 -ml-2"
                 onClick={handleBack}
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -205,7 +253,9 @@ export default function AddContentDialog({ open, onOpenChange }: AddContentDialo
                           ? "border-primary bg-primary/5"
                           : "hover:border-primary/50"
                       )}
-                      onClick={() => handleContentTypeChange(type.id as typeof contentType)}
+                      onClick={() =>
+                        handleContentTypeChange(type.id as typeof contentType)
+                      }
                     >
                       <Icon className="h-4 w-4 shrink-0" />
                       <span className="text-sm font-medium">{type.label}</span>
@@ -226,7 +276,7 @@ export default function AddContentDialog({ open, onOpenChange }: AddContentDialo
                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                   />
                 </div>
-                <Button onClick={handleSearch} disabled={searching}>
+                <Button onClick={() => handleSearch()} disabled={searching}>
                   {searching ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
@@ -236,39 +286,64 @@ export default function AddContentDialog({ open, onOpenChange }: AddContentDialo
               </div>
 
               {/* Search Results */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              <div
+                className={cn(
+                  contentType === "podcast"
+                    ? "flex flex-col gap-4"
+                    : "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"
+                )}
+              >
                 {searchResults.map((result) => (
                   <Card
                     key={result.id}
                     className={cn(
-                      "cursor-pointer transition-all h-full hover:ring-2 hover:ring-primary/50",
-                      selectedContent?.id === result.id && "ring-2 ring-primary"
+                      "cursor-pointer transition-all hover:ring-2 hover:ring-primary/50",
+                      selectedContent?.id === result.id &&
+                        "ring-2 ring-primary",
+                      result.youtubeId && "flex gap-4"
                     )}
                     onClick={() => handleContentSelect(result)}
                   >
-                    <div className="relative pt-[150%] overflow-hidden rounded-t-lg">
-                      <Image
-                        src={result.image}
-                        alt={result.title}
-                        fill
-                        className="absolute inset-0 object-cover"
-                        sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-                      />
-                      {result.tmdbRating && (
-                        <div className="absolute top-2 right-2 bg-black/60 rounded-full px-2 py-1">
-                          <div className="flex items-center gap-1">
-                            <Star className="h-3 w-3 text-yellow-400" />
-                            <span className="text-xs text-white font-medium">
-                              {result.tmdbRating.toFixed(1)}
-                            </span>
-                          </div>
-                        </div>
+                    <div
+                      className={cn(
+                        "relative overflow-hidden rounded-lg",
+                        result.youtubeId ? "w-64 shrink-0" : "pt-[150%]"
                       )}
+                    >
+                      <div className={result.youtubeId ? "pt-[56.25%]" : ""}>
+                        <Image
+                          src={result.image}
+                          alt={result.title}
+                          fill
+                          className={cn(
+                            "absolute inset-0",
+                            result.youtubeId ? "object-cover" : "object-cover"
+                          )}
+                          sizes={
+                            result.youtubeId
+                              ? "256px"
+                              : "(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+                          }
+                        />
+                      </div>
                     </div>
-                    <div className="p-3 space-y-2">
-                      <h3 className="font-semibold text-sm line-clamp-2">{result.title}</h3>
+                    <div
+                      className={cn(
+                        "p-3 space-y-2",
+                        result.youtubeId && "flex-1"
+                      )}
+                    >
+                      <h3
+                        className={cn(
+                          "font-semibold",
+                          result.youtubeId ? "text-base" : "text-sm",
+                          result.youtubeId ? "line-clamp-2" : "line-clamp-2"
+                        )}
+                      >
+                        {decodeHTMLEntities(result.title)}
+                      </h3>
                       {result.host && (
-                        <p className="text-xs text-muted-foreground line-clamp-1">
+                        <p className="text-sm text-muted-foreground line-clamp-1">
                           {result.host}
                         </p>
                       )}
@@ -278,6 +353,17 @@ export default function AddContentDialog({ open, onOpenChange }: AddContentDialo
                     </div>
                   </Card>
                 ))}
+
+                {searchResults.length > 0 && (
+                  <div
+                    ref={loadMoreRef}
+                    className="col-span-full flex justify-center p-4"
+                  >
+                    {searching && (
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
+                )}
               </div>
             </>
           ) : (
@@ -293,20 +379,21 @@ export default function AddContentDialog({ open, onOpenChange }: AddContentDialo
                   />
                 </div>
                 <div>
-                  <h3 className="font-semibold mb-1">{selectedContent.title}</h3>
+                  <h3 className="font-semibold mb-1">
+                    {selectedContent.title}
+                  </h3>
                   <p className="text-sm text-muted-foreground mb-2">
                     {selectedContent.overview?.slice(0, 150)}...
                   </p>
-                  <Badge variant="secondary">
-                    {selectedContent.type}
-                  </Badge>
+                  <Badge variant="secondary">{selectedContent.type}</Badge>
                 </div>
               </div>
 
               {/* Platform Selection */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {platformsByType[contentType].map((platform) => {
-                  const config = platformConfig[platform as keyof typeof platformConfig];
+                  const config =
+                    platformConfig[platform as keyof typeof platformConfig];
                   const PlatformIcon = config.icon;
                   return (
                     <Card
@@ -334,10 +421,7 @@ export default function AddContentDialog({ open, onOpenChange }: AddContentDialo
             Cancel
           </Button>
           {step === "platform" && (
-            <Button
-              onClick={handleAdd}
-              disabled={!selectedPlatform}
-            >
+            <Button onClick={handleAdd} disabled={!selectedPlatform}>
               <Plus className="h-4 w-4 mr-2" />
               Add to Library
             </Button>

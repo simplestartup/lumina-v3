@@ -106,74 +106,72 @@ function SidebarContent({
   return (
     <div
       className={cn(
-        "relative h-full bg-gray-900 text-white transition-all duration-300",
+        "fixed top-0 left-0 h-screen flex flex-col",
+        "bg-gray-900 text-white transition-all duration-300",
         isCollapsed ? "w-[80px]" : "w-[280px]",
         !isMobile && "p-4"
       )}
     >
-      {!isMobile && (
-        <Button
-          onClick={onCollapse}
-          variant="ghost"
+      {/* Static header section */}
+      <div className="flex-none">
+        {!isMobile && (
+          <Button
+            onClick={onCollapse}
+            variant="ghost"
+            className={cn(
+              "absolute -right-4 top-7 h-7 w-7 rounded-full border bg-gray-800 p-0 hover:bg-gray-700",
+              isCollapsed && "rotate-180"
+            )}
+          >
+            <ChevronLeft className="h-4 w-4 text-white" />
+          </Button>
+        )}
+
+        <Link
+          href="/"
           className={cn(
-            "absolute -right-4 top-7 h-7 w-7 rounded-full border bg-gray-800 p-0 hover:bg-gray-700",
-            isCollapsed && "rotate-180"
+            "flex items-center",
+            isCollapsed ? "justify-center" : "px-3",
+            "h-16"
           )}
         >
-          <ChevronLeft className="h-4 w-4 text-white" />
-        </Button>
-      )}
-
-      <Link
-        href="/"
-        className={cn(
-          "flex items-center",
-          isCollapsed ? "justify-center" : "px-3",
-          "h-16 mb-6" // Fixed height and margin
-        )}
-      >
-        {isCollapsed ? (
-          <PlayCircle className="h-8 w-8" />
-        ) : (
-          <h1 className="text-2xl font-bold">StreamTracker</h1>
-        )}
-      </Link>
-
-      <div className="space-y-2">
-        {" "}
-        {/* Reduced space between sections */}
-        <NavSection
-          title="Main"
-          routes={mainRoutes}
-          isCollapsed={isCollapsed}
-        />
-        <NavSection
-          title="Library"
-          routes={libraryRoutes}
-          isCollapsed={isCollapsed}
-        />
-        <NavSection
-          title="Lists"
-          routes={listsRoutes}
-          isCollapsed={isCollapsed}
-        />
-        <NavSection
-          title="Insights"
-          routes={insightRoutes}
-          isCollapsed={isCollapsed}
-        />
+          {isCollapsed ? (
+            <PlayCircle className="h-8 w-8" />
+          ) : (
+            <h1 className="text-2xl font-bold">StreamTracker</h1>
+          )}
+        </Link>
       </div>
 
-      <div
-        className={cn(
-          "absolute bottom-0 left-0 right-0 border-t border-gray-800",
-          !isMobile && "p-4",
-          isMobile && "pb-8"
-        )}
-      >
+      {/* Scrollable main section */}
+      <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="space-y-2">
+          <NavSection
+            title="Main"
+            routes={mainRoutes}
+            isCollapsed={isCollapsed}
+          />
+          <NavSection
+            title="Library"
+            routes={libraryRoutes}
+            isCollapsed={isCollapsed}
+          />
+          <NavSection
+            title="Lists"
+            routes={listsRoutes}
+            isCollapsed={isCollapsed}
+          />
+          <NavSection
+            title="Insights"
+            routes={insightRoutes}
+            isCollapsed={isCollapsed}
+          />
+        </div>
+      </div>
+
+      {/* Static footer section */}
+      <div className="flex-none border-t border-gray-800">
         <div className="space-y-1 pt-4">
-          {" "}
-          {/* Consistent spacing */}
           {userRoutes.map((route) => (
             <Tooltip key={route.href} delayDuration={0}>
               <TooltipTrigger asChild>
@@ -215,7 +213,7 @@ function SidebarContent({
           ))}
         </div>
         {!isCollapsed && (
-          <div className="mt-6 px-3">
+          <div className="mt-6 px-3 pb-4">
             <Button className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700">
               Upgrade to Pro
             </Button>

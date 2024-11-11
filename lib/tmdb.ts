@@ -53,7 +53,11 @@ export async function getTrending(type: MediaType = "movie", page: number = 1) {
   }
 }
 
-export async function searchContent(query: string, type: MediaType) {
+export async function searchContent(
+  query: string,
+  type: string,
+  page: number = 1
+) {
   try {
     // For documentaries, search in both movies and TV shows with documentary genre
     if (type === "documentary") {
@@ -61,12 +65,12 @@ export async function searchContent(query: string, type: MediaType) {
         fetch(
           `${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(
             query
-          )}&with_genres=99`
+          )}&with_genres=99&page=${page}`
         ),
         fetch(
           `${TMDB_BASE_URL}/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(
             query
-          )}&with_genres=99`
+          )}&with_genres=99&page=${page}`
         ),
       ]);
 
@@ -98,7 +102,7 @@ export async function searchContent(query: string, type: MediaType) {
     const response = await fetch(
       `${TMDB_BASE_URL}/search/${searchType}?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(
         query
-      )}`
+      )}&page=${page}`
     );
 
     if (!response.ok) {

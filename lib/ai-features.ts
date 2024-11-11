@@ -23,6 +23,7 @@ export interface AIRecommendation {
   confidence: number;
   reason: string;
   source: "trending" | "similar" | "personalized";
+  rating?: number;
 }
 
 // Helper Functions

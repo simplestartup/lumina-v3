@@ -1,6 +1,6 @@
 "use client";
 
-const YOUTUBE_API_KEY = "AIzaSyApsi5uH5k37ltHpkUCM8Bagsidl8VyQyU";
+const YOUTUBE_API_KEY = "AIzaSyDSwjBeksXj9qbzr76kreQVawWIVVagA8c";
 const YOUTUBE_API_URL = "https://www.googleapis.com/youtube/v3";
 
 interface YouTubeSearchResult {

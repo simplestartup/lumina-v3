@@ -32,7 +32,7 @@ import { ActionButtons } from "./action-buttons";
 import { RatingStars } from "./rating-stars";
 import Image from "next/image";
 
-interface ContentCardProps {
+export type ContentCardProps = {
   content: {
     id: string;
     title: string;
@@ -50,7 +50,8 @@ interface ContentCardProps {
     overview?: string;
     tmdbRating?: number;
   };
-}
+  layout?: "grid" | "list";
+};
 
 const platformColors = {
   netflix: "bg-red-500",
@@ -63,7 +64,10 @@ const platformColors = {
   spotify: "bg-green-500",
 };
 
-export default function ContentCard({ content }: ContentCardProps) {
+export default function ContentCard({
+  content,
+  layout = "grid",
+}: ContentCardProps) {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showAddToPlaylist, setShowAddToPlaylist] = useState(false);
@@ -115,15 +119,31 @@ export default function ContentCard({ content }: ContentCardProps) {
 
   if (isYouTube) {
     return (
-      <Card className="group relative h-full flex flex-col overflow-hidden">
+      <Card
+        className={cn(
+          "group relative overflow-hidden",
+          layout === "grid" ? "h-full flex flex-col" : "flex flex-row gap-4"
+        )}
+      >
         {/* Video Thumbnail Section */}
-        <div className="relative aspect-video">
+        <div
+          className={cn(
+            "relative",
+            layout === "grid"
+              ? "aspect-video w-full"
+              : "w-48 aspect-video shrink-0"
+          )}
+        >
           <Image
             src={content.image}
             alt={content.title}
             fill
             className="object-cover"
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            sizes={
+              layout === "grid"
+                ? "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                : "192px"
+            }
           />
           {/* Gradient Overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
@@ -144,38 +164,43 @@ export default function ContentCard({ content }: ContentCardProps) {
         </div>
 
         {/* Content Section */}
-        <CardContent className="flex-1 p-4">
+        <CardContent
+          className={cn(
+            "flex-1",
+            layout === "grid" ? "p-4" : "p-4 flex flex-col justify-between"
+          )}
+        >
           <div className="flex flex-col gap-3">
             {/* Title and External Link */}
-            <div className="flex items-start gap-2">
-              <div className="flex-1 min-w-0">
-                <Button
-                  variant="link"
-                  className="p-0 h-auto font-semibold text-lg text-left hover:no-underline w-full"
+            <div className="group/title">
+              <div className="flex items-start gap-2">
+                <h3 className="flex-1 font-semibold text-base">
+                  {content.title}
+                </h3>
+                <ExternalLink
+                  className="h-4 w-4 shrink-0 mt-1 cursor-pointer hover:text-primary transition-colors"
                   onClick={handleOpenYouTube}
-                >
-                  <span className="text-left hover:text-primary transition-colors line-clamp-2">
-                    {content.title}
-                  </span>
-                </Button>
+                />
               </div>
-              <ExternalLink
-                className="h-4 w-4 shrink-0 mt-1 cursor-pointer hover:text-primary transition-colors"
+              <Button
+                variant="link"
+                className="p-0 h-auto text-sm text-muted-foreground hover:text-primary mt-1"
                 onClick={handleOpenYouTube}
-              />
+              >
+                Watch on YouTube
+              </Button>
             </div>
 
             {/* Channel and Duration Info */}
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap text-sm">
               {content.host && (
-                <span className="text-sm text-muted-foreground">
+                <span className="font-medium text-muted-foreground hover:text-primary cursor-pointer">
                   {content.host}
                 </span>
               )}
               {content.duration && (
                 <>
-                  <span className="text-muted-foreground">•</span>
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-muted-foreground">
                     {content.duration}
                   </span>
                 </>
@@ -184,29 +209,42 @@ export default function ContentCard({ content }: ContentCardProps) {
 
             {/* Genre Tags */}
             <div className="flex flex-wrap gap-2">
-              {(Array.isArray(content.genre)
-                ? content.genre
-                : [content.genre]
-              ).map((genre) => (
-                <Badge key={genre} variant="outline" className="text-xs">
-                  {genre}
-                </Badge>
-              ))}
+              {(Array.isArray(content.genre) ? content.genre : [content.genre])
+                .slice(0, layout === "grid" ? 3 : undefined)
+                .map((genre) => (
+                  <Badge key={genre} variant="outline" className="text-xs">
+                    {genre}
+                  </Badge>
+                ))}
+              {layout === "grid" &&
+                Array.isArray(content.genre) &&
+                content.genre.length > 3 && (
+                  <Badge variant="outline" className="text-xs">
+                    +{content.genre.length - 3} more
+                  </Badge>
+                )}
             </div>
 
-            {/* Date Added */}
-            <div className="text-sm text-muted-foreground">
-              <p>
-                Added: {format(new Date(content.releaseDate), "MMM d, yyyy")}
-              </p>
+            <div className="text-sm text-muted-foreground flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              <span>
+                Added {format(new Date(content.releaseDate), "MMM d, yyyy")}
+              </span>
             </div>
           </div>
+
+          {layout === "list" && (
+            <div className="mt-4">
+              <RatingStars rating={content.rating} onRate={handleRating} />
+            </div>
+          )}
         </CardContent>
 
-        {/* Rating Section */}
-        <CardFooter className="p-4 pt-0 mt-auto">
-          <RatingStars rating={content.rating} onRate={handleRating} />
-        </CardFooter>
+        {layout === "grid" && (
+          <CardFooter className="p-4 pt-0 mt-auto">
+            <RatingStars rating={content.rating} onRate={handleRating} />
+          </CardFooter>
+        )}
 
         {/* Dialogs */}
         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
